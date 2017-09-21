@@ -12,7 +12,7 @@
 
 from flask import Flask, jsonify, make_response, abort
 import pickle as pkl
-from fbrecommender import SVDUIRecommender, DistanceIIRecommender
+from fbrecommender.recommenders import *
 
 app = Flask(__name__)
 
@@ -51,7 +51,8 @@ def user_recs(user_id, rec_num):
         abort(400)
     return jsonify({
         'user': user_id,
-        'recommendations': uir.ui_recs.loc[user_id, :(rec_num - 1)].tolist()
+        'recommendations':
+        uir.recommendations.loc[user_id, :(rec_num - 1)].tolist()
     })
 
 
@@ -71,7 +72,7 @@ def user_recs_range(user_id, start, end):
         abort(400)
     return jsonify({
         'user': user_id,
-        'recommendations': uir.ui_recs.loc[user_id, start:end].tolist()
+        'recommendations': uir.recommendations.loc[user_id, start:end].tolist()
     })
 
 
@@ -91,7 +92,8 @@ def item_recs(item_id, rec_num):
         abort(400)
     return jsonify({
         'item': item_id,
-        'recommendations': iir.ii_recs.loc[item_id, :(rec_num - 1)].tolist()
+        'recommendations':
+        iir.recommendations.loc[item_id, :(rec_num - 1)].tolist()
     })
 
 
@@ -111,7 +113,8 @@ def item_recs_range(item_id, start, end):
         abort(400)
     return jsonify({
         'item': item_id,
-        'recommendations': iir.ii_recs.loc[item_id, start:end].tolist()
+        'recommendations':
+        iir.recommendations.loc[item_id, start:end].tolist()
     })
 
 

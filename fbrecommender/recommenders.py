@@ -28,6 +28,7 @@ class SVDUIRecommender(FBRecommender):
     '''
 
     def __init__(self, datasource, **kwargs):
+        self.recommender_type = 'User-Item Weighted Single Value Decomposition'
         self.factor_num = kwargs.get('factor_num', 10)
         self.reg_factor = kwargs.get('reg_factor', 10)
         use_weights = kwargs.get('use_weights', True)
@@ -247,7 +248,7 @@ class HeuristicUIRecommender(FBRecommender):
     '''
 
     def __init__(self, datasource, **kwargs):
-        print("Using Heuristic User->Item Recommender")
+        self.recommender_type = 'User-Item Heuristic'
         if type(datasource) == tuple:
             # Possible to introduce data as a tuple of
             # (numpy array, user names, item names)
@@ -307,7 +308,7 @@ class HeuristicUIRecommender(FBRecommender):
                 ]
 
 
-class DistanceIIRecommender:
+class DistanceIIRecommender(FBRecommender):
 
     def __init__(self, datasource, **kwargs):
         '''
@@ -316,6 +317,7 @@ class DistanceIIRecommender:
 
         :param datasource: The source for the user-item ratings data.
         '''
+        self.recommender_type = 'Item-Item Vector Similarity'
         # The datasource can be a tuple, pandas dataframe, or filename.
         if type(datasource) == tuple:
             # If the data is a tuple it should be a threeple of:
@@ -338,17 +340,17 @@ class DistanceIIRecommender:
             self.users = pd_data.index
             # Convert the pandas data to a numpy array.
             self.data = pd_data.as_matrix()
-        self.ii_sims = np.empty((len(self.items), len(self.items)))
-        self.ii_sims_argsorted = None
-        self.ii_sims_sorted = None
-        self.ii_recs = pd.DataFrame(
+        self.sim_scores = np.empty((len(self.items), len(self.items)))
+        self.sim_scores_argsorted = None
+        self.sim_scores_sorted = None
+        self.recommendations = pd.DataFrame(
             index=self.items,
             columns=range(0, len(self.items))
         )
 
     def populate_recommender(self, dist_measure='cosine'):
         '''
-        Fills the recommender base on the initial data.
+        Fills the recommender based on the initial data.
 
         :param dist_measure: The type of vector similarity measure to use
         to calculate item-item similarity.
@@ -362,12 +364,14 @@ class DistanceIIRecommender:
         for i in range(0, len(self.items)):
             for j in range(0, len(self.items)):
                 if i == j:
-                    self.ii_sims[i, j] = 0
+                    self.sim_scores[i, j] = 0
                 else:
-                    self.ii_sims[i, j] = calc_sim(i, j)
-        self.ii_sims_argsorted = np.flipud(np.argsort(self.ii_sims, axis=0))
-        self.ii_sims_sorted = np.flipud(np.sort(self.ii_sims, axis=0))
+                    self.sim_scores[i, j] = calc_sim(i, j)
+        self.sim_scores_argsorted = np.flipud(
+            np.argsort(self.sim_scores, axis=0)
+        )
+        self.sim_scores_sorted = np.flipud(np.sort(self.sim_scores, axis=0))
         for i in range(0, len(self.items)):
-            self.ii_recs.iloc[i, :] = self.items[
-                self.ii_sims_argsorted[:, i]
+            self.recommendations.iloc[i, :] = self.items[
+                self.sim_scores_argsorted[:, i]
             ]
