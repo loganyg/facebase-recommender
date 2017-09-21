@@ -12,14 +12,14 @@
 
 from flask import Flask, jsonify, make_response, abort
 import pickle as pkl
-from fbrecommender.recommenders import *
+from .fbrecommender.recommenders import *
 
 app = Flask(__name__)
 
-with open("./svd_ui_recommender.pkl", 'rb') as pickled_r:
+with open("./ui_recommender.pkl", 'rb') as pickled_r:
     uir = pkl.load(pickled_r)
 
-with open("./dist_ii_recommender.pkl", 'rb') as pickled_r:
+with open("./ii_recommender.pkl", 'rb') as pickled_r:
     iir = pkl.load(pickled_r)
 
 
