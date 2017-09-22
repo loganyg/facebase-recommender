@@ -9,7 +9,6 @@ from keras.layers.noise import GaussianNoise
 from keras.initializers import RandomNormal
 from keras.regularizers import l2
 from keras.models import Model
-from keras import metrics
 import numpy as np
 import pandas as pd
 import json
@@ -35,87 +34,93 @@ class StackedDenoisingAutoencoder:
     def __init__(self,
                  content_num,
                  **kwargs):
-        layers = kwargs.get('layers', 4)
-        intermediate_units = kwargs.get('intermediate_units', 200)
-        activation = kwargs.get('activation', 'sigmoid')
-        hp_w = kwargs.get('hp_w', 10)
-        hp_n = kwargs.get('hp_n', 100)
-        factors = kwargs.get('factors', 20)
-        inputs = Input(shape=(content_num,))
+        self.layers = kwargs.get('layers', 4)
+        self.intermediate_units = kwargs.get('intermediate_units', 200)
+        self.activation = kwargs.get('activation', 'sigmoid')
+        self.hp_w = kwargs.get('hp_w', 10)
+        self.hp_n = kwargs.get('hp_n', 100)
+        self.factors = kwargs.get('factors', 20)
+        self.inputs = Input(shape=(content_num,))
         # Add the encoding layers
-        encoder = inputs
+        self.encoder = self.inputs
         # The first few encoding layers have the intermediary size K_l
-        for i in range(1, int(layers / 2)):
-            encoder = Dense(intermediate_units,
-                            activation=activation,
-                            kernel_initializer=RandomNormal(
-                                mean=0.0,
-                                stddev=1 / hp_w
-                            ),
-                            use_bias=True,
-                            bias_initializer=RandomNormal(
-                                mean=0.0,
-                                stddev=1 / hp_w
-                            ),
-                            kernel_regularizer=l2(hp_w / 2),
-                            bias_regularizer=l2(hp_w / 2)
-                            )(encoder)
+        for i in range(1, int(self.layers / 2)):
+            self.encoder = Dense(self.intermediate_units,
+                                 activation=self.activation,
+                                 kernel_initializer=RandomNormal(
+                                     mean=0.0,
+                                     stddev=1 / self.hp_w
+                                 ),
+                                 use_bias=True,
+                                 bias_initializer=RandomNormal(
+                                     mean=0.0,
+                                     stddev=1 / self.hp_w
+                                 ),
+                                 kernel_regularizer=l2(self.hp_w / 2),
+                                 bias_regularizer=l2(self.hp_w / 2)
+                                 )(self.encoder)
         # Add the final encoding layer, with a size equal to the number of
         # latent factors for the user and item vectors, so it can be piped
         # into the item factors.
-        encoder = Dense(factors,
-                        activation=activation,
-                        kernel_initializer=RandomNormal(
-                            mean=0.0,
-                            stddev=1 / hp_w
-                        ),
-                        use_bias=True,
-                        bias_initializer=RandomNormal(
-                            mean=0.0,
-                            stddev=1 / hp_w
-                        ),
-                        kernel_regularizer=l2(hp_w / 2),
-                        bias_regularizer=l2(hp_w / 2),
-                        name='encoder'
-                        )(encoder)
+        self.encoder = Dense(self.factors,
+                             activation=self.activation,
+                             kernel_initializer=RandomNormal(
+                                 mean=0.0,
+                                 stddev=1 / self.hp_w
+                             ),
+                             use_bias=True,
+                             bias_initializer=RandomNormal(
+                                 mean=0.0,
+                                 stddev=1 / self.hp_w
+                             ),
+                             kernel_regularizer=l2(self.hp_w / 2),
+                             bias_regularizer=l2(self.hp_w / 2),
+                             name='encoder'
+                             )(self.encoder)
 
         # Add decoder layers
-        decoder = encoder
+        self.decoder = self.encoder
         # Add the inbetween decoder layers, with intermediary size K_l
-        for i in range(0, int(layers / 2)):
-            decoder = Dense(intermediate_units,
-                            activation=activation,
-                            kernel_initializer=RandomNormal(
-                                mean=0.0,
-                                stddev=1 / hp_w
-                            ),
-                            use_bias=True,
-                            bias_initializer=RandomNormal(
-                                mean=0.0,
-                                stddev=1 / hp_w
-                            ),
-                            kernel_regularizer=l2(hp_w / 2),
-                            bias_regularizer=l2(hp_w / 2)
-                            )(decoder)
+        for i in range(0, int(self.layers / 2)):
+            self.decoder = Dense(self.intermediate_units,
+                                 activation=self.activation,
+                                 kernel_initializer=RandomNormal(
+                                     mean=0.0,
+                                     stddev=1 / self.hp_w
+                                 ),
+                                 use_bias=True,
+                                 bias_initializer=RandomNormal(
+                                     mean=0.0,
+                                     stddev=1 / self.hp_w
+                                 ),
+                                 kernel_regularizer=l2(self.hp_w / 2),
+                                 bias_regularizer=l2(self.hp_w / 2)
+                                 )(self.decoder)
         # Add the final decoder layer, with a size of the clean data, equal
         # to the size of the lexicon.
-        decoder = Dense(content_num,
-                        activation=activation,
-                        kernel_initializer=RandomNormal(
-                            mean=0.0,
-                            stddev=1 / hp_w
-                        ),
-                        use_bias=True,
-                        bias_initializer=RandomNormal(
-                            mean=0.0,
-                            stddev=1 / hp_w
-                        ),
-                        kernel_regularizer=l2(hp_w / 2),
-                        bias_regularizer=l2(hp_w / 2)
-                        )(decoder)
+        self.decoder = Dense(content_num,
+                             activation=self.activation,
+                             kernel_initializer=RandomNormal(
+                                 mean=0.0,
+                                 stddev=1 / self.hp_w
+                             ),
+                             use_bias=True,
+                             bias_initializer=RandomNormal(
+                                 mean=0.0,
+                                 stddev=1 / self.hp_w
+                             ),
+                             kernel_regularizer=l2(self.hp_w / 2),
+                             bias_regularizer=l2(self.hp_w / 2)
+                             )(self.decoder)
         # Add a small amount of variance to the output
-        decoder = GaussianNoise(1 / hp_n, name='decoder')(decoder)
-        self.model = Model(inputs=inputs, outputs=[decoder, encoder])
+        self.decoder = GaussianNoise(
+            1 / self.hp_n,
+            name='decoder'
+        )(self.decoder)
+        self.model = Model(
+            inputs=self.inputs,
+            outputs=[self.decoder, self.encoder]
+        )
 
 
 class CDLUIRecommender(FBRecommender):
@@ -151,6 +156,7 @@ class CDLUIRecommender(FBRecommender):
                  ui_datasource,
                  ic_datasource,
                  **kwargs):
+        self.recommender_type = 'Collaborative Deep Learning'
         # Initializes user-item data
         self.hp_w = kwargs.get('hp_w', 10)
         self.hp_n = kwargs.get('hp_n', 100)
@@ -237,19 +243,27 @@ class CDLUIRecommender(FBRecommender):
                                 loss='mse',
                                 loss_weights={
                                      'encoder': self.hp_v / 2,
-                                     'decoder': self.hp_n / 2},
-                                metrics=[metrics.binary_accuracy, ])
+                                     'decoder': self.hp_n / 2})
         # Initialize the user and item factors
         self.u_factors = np.random.normal(
             loc=0.0,
             scale=1 / self.hp_u,
             size=(len(self.users), self.factors)
         )
-        self.i_factors = self.sdae.model.predict(self.ic_data)[1]
+        self.i_factors = self.sdae.model.predict(self.noised_data)[1]
         + np.random.normal(
             loc=0.0,
             scale=1 / self.hp_v,
-            size=(len(self.items), self.fasctors)
+            size=(len(self.items), self.factors)
+        )
+        self.sim_scores = np.empty((len(self.items), len(self.users)))
+        self.sim_scores_sorted = np.empty((len(self.items), len(self.users)))
+        self.sim_scores_argsorted = np.empty(
+            (len(self.items), len(self.users))
+        )
+        self.recommendations = pd.DataFrame(
+            index=self.users,
+            columns=range(0, len(self.items))
         )
         super(CDLUIRecommender, self).__init__()
 
@@ -329,11 +343,11 @@ class CDLUIRecommender(FBRecommender):
                                     'encoder': self.i_factors
                                 },
                                 epochs=1,
-                                batch_size=32,
+                                batch_size=kwargs.get('batch_size', 64),
                                 verbose=model_verbose
                                 )
-            encoding = self.sdae.model.predict(self.ic_data)[1]
-            self.update_factors(1, encoding)
+            ic_encoding = self.sdae.model.predict(self.noised_data)[1]
+            self.update_factors(1, ic_encoding)
         for u in range(0, len(self.users)):
             for i in range(0, len(self.items)):
                 if self.ui_data[i, u] != 0:
