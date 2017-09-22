@@ -1,0 +1,36 @@
+### Instructions for converting log files into a recommender system ###
+### Last updated September 22, 2017
+
+The step to convert log files to an edgelist is shapeActions.r
+The first half of the script takes two log files (downloads and views) and converts them into edgelists,
+while mapping the datasets to the appropriate dataset_id from accessions.txt.
+The second half of the script is for descriptions of the dataset and can be disregarded for regular
+use.
+
+To convert the edgelist to an adjacency matrix use edgelisttoadjmatrix.py or any other (probably faster)
+preexisting method.
+
+Finally, you can use one of the recommenders in fbrecommender/recommenders.py to convert an adjacency matrix
+to a recommender.
+All recommenders take as the first argument a filepath to the adjacency matrix, assuming the rows to be users
+and the columns to be items.
+The best performing user-item recommender is SVDUIRecommender, which takes in a filepath to an adjacency matrix,
+as well as keyword arguments weight_param, reg_factor, and factor_num. After initialization you must run populate_recommender,
+which takes in one keyword argument, iterations.
+Best performance for the globus user dataset recommendations has been with:
+weight_param=5
+reg_factor=10
+factor_num=40
+iterations=40
+
+Example:
+r = SVDUIRecommender("./FacebaseData/user_adjmatrix.csv", weight_param=5, reg_factor=10, factor_num=40)
+r.populate_recommender(iterations=40)
+
+Updating the API's recommender is then as simple as pickling the recommender
+and uploading it to /home/ubuntu/recommendation_api/ui_recommender.pkl on the webserver.
+
+With new data performance can be evaluated through grid search using recommender_tester.py
+
+You can follow a similar process with DistanceIIRecommender to refresh the item-item recommendations,
+only with no keyword arguments.
